@@ -1,0 +1,23 @@
+{
+  "name": "gpi-2",
+  "version": "2.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node server/index.js",
+    "build": "vite build",
+    "start": "node server/index.js --production",
+    "check": "node --check server/index.js && vite build",
+    "release:portable": "powershell -ExecutionPolicy Bypass -File scripts/make-portable-release.ps1"
+  },
+  "dependencies": {
+    "@openai/codex": "^0.133.0",
+    "@vitejs/plugin-react": "^5.1.1",
+    "express": "^5.2.1",
+    "lucide-react": "^0.561.0",
+    "openai-oauth": "^1.0.2",
+    "react": "^19.2.3",
+    "react-dom": "^19.2.3",
+    "vite": "^8.0.10"
+  }
+}

@@ -1,0 +1,13 @@
+node_modules/
+dist/
+.vite/
+.gpi/
+release/
+*.log
+logs.jsonl
+history.json
+local.json
+*.bak
+*.bak-*
+*.exe
+__pycache__/

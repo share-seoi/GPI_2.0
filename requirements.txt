@@ -1,0 +1,13 @@
+# GPI 2.0 runtime requirements
+#
+# This is not a Python project. Do not run `pip install -r requirements.txt`.
+# JavaScript dependencies are installed from package.json/package-lock.json.
+#
+# Required:
+# - Node.js 20 or newer
+# - npm 10 or newer
+# - Windows PowerShell, Windows Terminal, or another shell that can run npm
+#
+# Optional provider setup:
+# - OpenAI OAuth: use the in-app `chat gpt oauth 로그인` button, or run `npx @openai/codex login`
+# - Gemini: paste a Gemini API key into the in-app `gemini api key 입력` button
