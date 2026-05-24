@@ -20,9 +20,7 @@ const SHOULD_OPEN_BROWSER = process.argv.includes("--open") || process.env.GPI_O
 
 const OPENAI_PROXY_HOST = "127.0.0.1";
 const OPENAI_PROXY_PORT = 10531;
-const OPENAI_BASE_URL = `http://${OPENAI_PROXY_HOST}:${OPENAI_PROXY_PORT}/v1`;
-const OPENAI_MODELS_URL = `${OPENAI_BASE_URL}/models`;
-const OPENAI_RESPONSES_URL = `${OPENAI_BASE_URL}/responses`;
+const OPENAI_PROXY_SCAN_LIMIT = 20;
 const OPENAI_MODELS = ["gpt-5.5", "gpt-5.4", "gpt-5.4-mini"];
 const OPENAI_REASONING_EFFORTS = ["low", "medium", "high", "xhigh"];
 
@@ -42,6 +40,7 @@ const MAX_PROMPT_WORDS = 250;
 const MAX_HISTORY = 20;
 
 let openaiProxyProcess = null;
+let openaiProxyPort = OPENAI_PROXY_PORT;
 let loginLaunchUntil = 0;
 let openaiProxyStartPromise = null;
 let lastOpenAIAutoStartAt = 0;
@@ -196,24 +195,56 @@ async function fetchJson(url, options = {}, timeoutMs = 10000) {
   }
 }
 
-async function listOpenAIModels(timeoutMs = 3000) {
-  const data = await fetchJson(OPENAI_MODELS_URL, {}, timeoutMs);
+function openAIBaseUrl(port = openaiProxyPort) {
+  return `http://${OPENAI_PROXY_HOST}:${port}/v1`;
+}
+
+function openAIResponseUrl() {
+  return `${openAIBaseUrl()}/responses`;
+}
+
+function openAIProxyPortsToCheck() {
+  const ports = [openaiProxyPort, OPENAI_PROXY_PORT];
+  for (let offset = 1; offset <= OPENAI_PROXY_SCAN_LIMIT; offset += 1) {
+    ports.push(OPENAI_PROXY_PORT + offset);
+  }
+  return [...new Set(ports)];
+}
+
+function updateOpenAIProxyPortFromText(text) {
+  const value = String(text || "");
+  const urlMatch = value.match(/http:\/\/127\.0\.0\.1:(\d+)\/v1/i);
+  const portMatch = value.match(/Using port (\d+) instead/i);
+  const nextPort = Number(urlMatch?.[1] || portMatch?.[1]);
+  if (Number.isInteger(nextPort) && nextPort > 0) {
+    openaiProxyPort = nextPort;
+  }
+}
+
+async function listOpenAIModels(port = openaiProxyPort, timeoutMs = 3000) {
+  const data = await fetchJson(`${openAIBaseUrl(port)}/models`, {}, timeoutMs);
   return Array.isArray(data.data)
     ? data.data.map((item) => item.id).filter(Boolean)
     : [];
 }
 
 async function openaiProxyStatus() {
-  try {
-    const models = await listOpenAIModels(1200);
-    return {
-      running: true,
-      models,
-      supportedModels: OPENAI_MODELS.filter((model) => models.includes(model))
-    };
-  } catch {
-    return { running: false, models: [], supportedModels: [] };
+  for (const port of openAIProxyPortsToCheck()) {
+    try {
+      const models = await listOpenAIModels(port, 1200);
+      openaiProxyPort = port;
+      return {
+        running: true,
+        port,
+        baseUrl: openAIBaseUrl(port),
+        models,
+        supportedModels: OPENAI_MODELS.filter((model) => models.includes(model))
+      };
+    } catch {
+      // Try the next likely openai-oauth fallback port.
+    }
   }
+  return { running: false, port: openaiProxyPort, baseUrl: openAIBaseUrl(), models: [], supportedModels: [] };
 }
 
 async function waitForOpenAIProxy(processRef, timeoutMs = 20000) {
@@ -265,12 +296,14 @@ async function startOpenAIProxyOnce() {
   let processOutput = "";
   child.stdout?.on("data", (chunk) => {
     processOutput += chunk.toString();
+    updateOpenAIProxyPortFromText(processOutput);
     if (processOutput.length > 2000) {
       processOutput = processOutput.slice(-2000);
     }
   });
   child.stderr?.on("data", (chunk) => {
     processOutput += chunk.toString();
+    updateOpenAIProxyPortFromText(processOutput);
     if (processOutput.length > 2000) {
       processOutput = processOutput.slice(-2000);
     }
@@ -425,7 +458,7 @@ async function callOpenAI({ model, reasoningEffort, imageDataUrl, instruction, r
     reasoning: { effort: reasoningEffort }
   };
 
-  const response = await fetch(OPENAI_RESPONSES_URL, {
+  const response = await fetch(openAIResponseUrl(), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
