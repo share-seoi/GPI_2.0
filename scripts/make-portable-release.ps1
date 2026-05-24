@@ -127,10 +127,17 @@ Copy-Item -Path (Join-Path $NodeExtractDir "*") -Destination $NodeDir -Recurse -
 
 Copy-Item -LiteralPath (Join-Path $Root "server") -Destination $AppDir -Recurse -Force
 Copy-Item -LiteralPath (Join-Path $Root "dist") -Destination $AppDir -Recurse -Force
-Copy-Item -LiteralPath (Join-Path $Root "node_modules") -Destination $AppDir -Recurse -Force
 Copy-Item -LiteralPath (Join-Path $Root "package.json") -Destination $AppDir -Force
 Copy-Item -LiteralPath (Join-Path $Root "package-lock.json") -Destination $AppDir -Force
 Copy-Item -LiteralPath (Join-Path $Root "README.md") -Destination $AppDir -Force
+
+Write-Host "Installing runtime npm dependencies..."
+Push-Location -LiteralPath $AppDir
+try {
+  npm ci --omit=dev --no-audit --no-fund
+} finally {
+  Pop-Location
+}
 
 $RunBatName = "GPI " + [char]0xC2E4 + [char]0xD589 + ".bat"
 $GuideName = "GPI " + [char]0xCC98 + [char]0xC74C + " " + [char]0xC77D + [char]0xC5B4 + [char]0xC8FC + [char]0xC138 + [char]0xC694 + ".txt"
