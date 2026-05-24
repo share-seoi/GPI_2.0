@@ -4,7 +4,6 @@ import fsp from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawn } from "node:child_process";
-import { createServer as createViteServer } from "vite";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -861,6 +860,7 @@ async function createApp() {
   });
 
   if (!IS_PRODUCTION) {
+    const { createServer: createViteServer } = await import("vite");
     const vite = await createViteServer({
       root: ROOT_DIR,
       server: { middlewareMode: true },
